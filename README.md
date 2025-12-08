@@ -199,4 +199,3 @@ mvn spring-boot:run
 
 - [Diagrama UML](https://drive.google.com/file/d/1-hSBLckVL-tVWdhuoo6YgG5EgTraQPE-/view?usp=sharing)
 - [Documentação Geral do Sistema](https://drive.google.com/file/d/1Q-_Ooygm9UTMOKrSYm10joH6w2TF6Z4-/view?usp=sharing)
-- [APIDOG](https://3z8mift3kc.apidog.io/)
