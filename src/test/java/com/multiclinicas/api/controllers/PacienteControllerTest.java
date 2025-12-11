@@ -2,6 +2,7 @@ package com.multiclinicas.api.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multiclinicas.api.config.WebConfig;
+import com.multiclinicas.api.config.tenant.TenantContext;
 import com.multiclinicas.api.config.tenant.TenantInterceptor;
 import com.multiclinicas.api.dtos.CreateEnderecoDTO;
 import com.multiclinicas.api.dtos.EnderecoDTO;
@@ -31,9 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-// Import para o print()
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -64,12 +64,17 @@ class PacienteControllerTest {
         private PacienteDTO pacienteDTO;
         private Paciente paciente;
 
+        private final Long CLINIC_ID = 10L;
+
         @BeforeEach
         void setup() {
+                TenantContext.setClinicId(CLINIC_ID);
+
                 when(clinicaRepository.existsById(any())).thenReturn(true);
 
                 CreateEnderecoDTO enderecoCreate = new CreateEnderecoDTO(
                                 "00000-000", "rua 3", "1", "casa", "Centro", "Recife", "PE", "brasil");
+
                 EnderecoDTO enderecoRetorno = new EnderecoDTO(
                                 1L, "Rua Teste", "123", "Apto 1", "Centro", "Cidade", "SP", "00000-000", "brasil");
 
@@ -84,7 +89,7 @@ class PacienteControllerTest {
 
                 pacienteDTO = new PacienteDTO(
                                 1L,
-                                10L,
+                                CLINIC_ID,
                                 "João Silva",
                                 "joao@email.com",
                                 "123.456.789-00",
@@ -95,17 +100,19 @@ class PacienteControllerTest {
                 paciente = new Paciente();
                 paciente.setId(1L);
                 paciente.setNome("João Silva");
+                paciente.setEmail("joao@email.com");
         }
 
         @Test
         @DisplayName("Deve retornar lista de pacientes")
         void shouldReturnListOfPacientes() throws Exception {
-                when(pacienteService.findAll()).thenReturn(List.of(paciente));
+                when(pacienteService.findAll(CLINIC_ID)).thenReturn(List.of(paciente));
                 when(pacienteMapper.toDto(paciente)).thenReturn(pacienteDTO);
 
-                mockMvc.perform(get("/pacientes")
-                                .header("X-Clinic-ID", 1L)) // <--- ADICIONADO HEADER
-                                .andDo(print()) // <--- ADICIONADO DEBUG
+                mockMvc.perform(
+                                get("/pacientes")
+                                                .header("X-Clinic-ID", CLINIC_ID))
+                                .andDo(print())
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$[0].id").value(1L))
                                 .andExpect(jsonPath("$[0].nome").value("João Silva"));
@@ -114,26 +121,27 @@ class PacienteControllerTest {
         @Test
         @DisplayName("Deve retornar paciente por ID")
         void shouldReturnPacienteById() throws Exception {
-                Long id = 1L;
-                when(pacienteService.findById(id)).thenReturn(paciente);
+                when(pacienteService.findById(1L, CLINIC_ID)).thenReturn(paciente);
                 when(pacienteMapper.toDto(paciente)).thenReturn(pacienteDTO);
 
-                mockMvc.perform(get("/pacientes/{id}", id)
-                                .header("X-Clinic-ID", 1L)) // <--- ADICIONADO HEADER
+                mockMvc.perform(
+                                get("/pacientes/1")
+                                                .header("X-Clinic-ID", CLINIC_ID))
                                 .andDo(print())
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.id").value(id))
+                                .andExpect(jsonPath("$.id").value(1L))
                                 .andExpect(jsonPath("$.email").value("joao@email.com"));
         }
 
         @Test
         @DisplayName("Deve retornar 404 quando paciente não encontrado")
         void shouldReturn404WhenPacienteNotFound() throws Exception {
-                Long id = 999L;
-                doThrow(new ResourceNotFoundException("Paciente não encontrado")).when(pacienteService).findById(id);
+                doThrow(new ResourceNotFoundException("Paciente não encontrado nesta clínica"))
+                                .when(pacienteService).findById(999L, CLINIC_ID);
 
-                mockMvc.perform(get("/pacientes/{id}", id)
-                                .header("X-Clinic-ID", 1L)) // <--- ADICIONADO HEADER
+                mockMvc.perform(
+                                get("/pacientes/999")
+                                                .header("X-Clinic-ID", CLINIC_ID))
                                 .andDo(print())
                                 .andExpect(status().isNotFound());
         }
@@ -141,19 +149,22 @@ class PacienteControllerTest {
         @Test
         @DisplayName("Deve criar paciente com sucesso")
         void shouldCreatePacienteSuccessfully() throws Exception {
-                Long clinicaId = 10L;
                 Clinica clinicaMock = new Clinica();
-                clinicaMock.setId(clinicaId);
+                clinicaMock.setId(CLINIC_ID);
 
-                when(pacienteMapper.toEntity(any(PacienteCreateDTO.class))).thenReturn(paciente);
-                when(clinicaService.findById(clinicaId)).thenReturn(clinicaMock);
-                when(pacienteService.create(any(Paciente.class))).thenReturn(paciente);
+                when(pacienteMapper.toEntity(any())).thenReturn(paciente);
+                when(clinicaService.findById(CLINIC_ID)).thenReturn(clinicaMock);
+
+                // CORREÇÃO: Adicionado eq(CLINIC_ID) para corresponder à assinatura do Service
+                when(pacienteService.create(eq(CLINIC_ID), any(Paciente.class))).thenReturn(paciente);
+
                 when(pacienteMapper.toDto(paciente)).thenReturn(pacienteDTO);
 
-                mockMvc.perform(post("/pacientes")
-                                .header("X-Clinic-ID", clinicaId)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(pacienteCreateDTO)))
+                mockMvc.perform(
+                                post("/pacientes")
+                                                .header("X-Clinic-ID", CLINIC_ID)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(pacienteCreateDTO)))
                                 .andDo(print())
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.id").value(1L))
@@ -164,12 +175,13 @@ class PacienteControllerTest {
         @DisplayName("Deve retornar 400 ao criar paciente com dados inválidos")
         void shouldReturn400WhenCreatingInvalidPaciente() throws Exception {
                 PacienteCreateDTO invalidDTO = new PacienteCreateDTO(
-                                "", "email-invalido", "", "", null, null, null);
+                                "", "inválido", "", "", null, null, null);
 
-                mockMvc.perform(post("/pacientes")
-                                .header("X-Clinic-ID", 10L) // <--- ADICIONADO HEADER (Importante mesmo na falha)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(invalidDTO)))
+                mockMvc.perform(
+                                post("/pacientes")
+                                                .header("X-Clinic-ID", CLINIC_ID)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(invalidDTO)))
                                 .andDo(print())
                                 .andExpect(status().isBadRequest());
         }
@@ -177,16 +189,16 @@ class PacienteControllerTest {
         @Test
         @DisplayName("Deve atualizar paciente com sucesso")
         void shouldUpdatePacienteSuccessfully() throws Exception {
-                Long id = 1L;
-
-                when(pacienteMapper.toEntity(any(PacienteCreateDTO.class))).thenReturn(paciente);
-                when(pacienteService.update(eq(id), any(Paciente.class))).thenReturn(paciente);
+                when(pacienteMapper.toEntity(any())).thenReturn(paciente);
+                when(pacienteService.update(eq(1L), any(Paciente.class), eq(CLINIC_ID)))
+                                .thenReturn(paciente);
                 when(pacienteMapper.toDto(paciente)).thenReturn(pacienteDTO);
 
-                mockMvc.perform(put("/pacientes/{id}", id)
-                                .header("X-Clinic-ID", 1L) // <--- ADICIONADO HEADER
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(pacienteCreateDTO)))
+                mockMvc.perform(
+                                put("/pacientes/1")
+                                                .header("X-Clinic-ID", CLINIC_ID)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(pacienteCreateDTO)))
                                 .andDo(print())
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.nome").value("João Silva"));
@@ -195,11 +207,13 @@ class PacienteControllerTest {
         @Test
         @DisplayName("Deve deletar paciente com sucesso")
         void shouldDeletePacienteSuccessfully() throws Exception {
-                Long id = 1L;
-
-                mockMvc.perform(delete("/pacientes/{id}", id)
-                                .header("X-Clinic-ID", 1L)) // <--- ADICIONADO HEADER
+                mockMvc.perform(
+                                delete("/pacientes/1")
+                                                .header("X-Clinic-ID", CLINIC_ID))
                                 .andDo(print())
                                 .andExpect(status().isNoContent());
+
+                // Verifica se o service foi chamado com o ID correto e o ClinicID do contexto
+                org.mockito.Mockito.verify(pacienteService).delete(eq(1L), eq(CLINIC_ID));
         }
 }

@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.multiclinicas.api.mappers.PacienteMapper;
 import com.multiclinicas.api.models.Paciente;
-import com.multiclinicas.api.services.ClinicaService;
 import com.multiclinicas.api.services.PacienteService;
+import com.multiclinicas.api.config.tenant.TenantContext;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -32,31 +31,28 @@ public class PacienteController {
 
     private final PacienteService pacienteService;
     private final PacienteMapper pacienteMapper;
-    private final ClinicaService clinicaService;
 
     @GetMapping
     public ResponseEntity<List<PacienteDTO>> getAllPacientes() {
-        List<Paciente> pacientes = pacienteService.findAll();
-        List<PacienteDTO> dto = pacientes.stream().map(pacienteMapper::toDto).toList();
-        return ResponseEntity.ok(dto);
-
+        Long clinicId = TenantContext.getClinicId();
+        List<Paciente> pacientes = pacienteService.findAll(clinicId);
+        return ResponseEntity.ok(
+                pacientes.stream().map(pacienteMapper::toDto).toList());
     }
 
     @PostMapping
-    public ResponseEntity<PacienteDTO> createPaciente(
-            @RequestHeader("X-Clinic-ID") Long clinicaId,
-            @Valid @RequestBody PacienteCreateDTO dto) {
+    public ResponseEntity<PacienteDTO> createPaciente(@Valid @RequestBody PacienteCreateDTO dto) {
+        Long clinicaId = TenantContext.getClinicId();
         Paciente paciente = pacienteMapper.toEntity(dto);
-        paciente.setClinica(clinicaService.findById(clinicaId));
-
-        Paciente salvo = pacienteService.create(paciente);
+        Paciente salvo = pacienteService.create(clinicaId, paciente);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(pacienteMapper.toDto(salvo));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PacienteDTO> getPacienteById(@PathVariable Long id) {
-        Paciente paciente = pacienteService.findById(id);
+        Long clinicId = TenantContext.getClinicId();
+        Paciente paciente = pacienteService.findById(id, clinicId);
         return ResponseEntity.ok(pacienteMapper.toDto(paciente));
     }
 
@@ -65,16 +61,19 @@ public class PacienteController {
             @PathVariable Long id,
             @Valid @RequestBody PacienteCreateDTO dto) {
 
-        Paciente novosDados = pacienteMapper.toEntity(dto);
+        Long clinicId = TenantContext.getClinicId();
 
-        Paciente pacienteAtualizado = pacienteService.update(id, novosDados);
+        Paciente novos = pacienteMapper.toEntity(dto);
 
-        return ResponseEntity.ok(pacienteMapper.toDto(pacienteAtualizado));
+        Paciente atualizado = pacienteService.update(id, novos, clinicId);
+
+        return ResponseEntity.ok(pacienteMapper.toDto(atualizado));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePaciente(@PathVariable Long id) {
-        pacienteService.delete(id);
+        Long clinicId = TenantContext.getClinicId();
+        pacienteService.delete(id, clinicId);
         return ResponseEntity.noContent().build();
     }
 }

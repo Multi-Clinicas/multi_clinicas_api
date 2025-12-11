@@ -5,13 +5,13 @@ import java.util.List;
 import com.multiclinicas.api.models.Paciente;
 
 public interface PacienteService {
-    List<Paciente> findAll();
+    List<Paciente> findAll(Long clinicId);
 
-    Paciente findById(Long id);
+    Paciente findById(Long id, Long clinicId);
 
-    Paciente create(Paciente paciente);
+    Paciente create(Long clinicId, Paciente paciente);
 
-    void delete(Long id);
+    void delete(Long id, Long clinicId);
 
-    Paciente update(Long id, Paciente paciente);
+    Paciente update(Long id, Paciente novosDados, Long clinicId);
 }
