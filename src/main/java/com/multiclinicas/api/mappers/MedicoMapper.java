@@ -1,11 +1,12 @@
 package com.multiclinicas.api.mappers;
 
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 
-import com.multiclinicas.api.dtos.ClinicaCreateDTO;
 import com.multiclinicas.api.dtos.MedicoCreateDTO;
 import com.multiclinicas.api.dtos.MedicoDTO;
-import com.multiclinicas.api.models.Clinica;
+import com.multiclinicas.api.models.Especialidade;
 import com.multiclinicas.api.models.Medico;
 
 @Component
@@ -24,7 +25,8 @@ public class MedicoMapper {
 				medico.getTelefone(),
 				medico.getTelefoneSecundario(),
 				medico.getDuracaoConsulta(),
-				medico.getEspecialidades(),
+				medico.getEspecialidades().stream().map(Especialidade::getNome)
+				.collect(Collectors.toSet()),
 				medico.getAtivo());
 				
 	}
