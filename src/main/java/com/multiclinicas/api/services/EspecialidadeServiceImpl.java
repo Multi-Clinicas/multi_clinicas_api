@@ -42,11 +42,13 @@ public class EspecialidadeServiceImpl implements EspecialidadeService {
         Clinica clinica = clinicaRepository.findById(clinicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Clinica não encontrada"));
 
-        //Valida se já existe essa especialidade na clinica
-        if(especialidadeRepository.existsByNomeAndClinicaId(especialidade.getNome(), clinicId)){
+        String nomeNormalizado = normalizarNome(especialidade.getNome());
+        if (especialidadeRepository.existsByNomeIgnoreCaseAndClinicaId(nomeNormalizado, clinicId)) {
             throw new BusinessException(
-                    "Já existe uma especialidade com o nome ' " + especialidade.getNome() + "' nesta clínica");
+                    "Já existe uma especialidade com o nome '" + nomeNormalizado + "' nesta clínica");
         }
+
+        especialidade.setNome(nomeNormalizado);
         especialidade.setClinica(clinica);
         return especialidadeRepository.save(especialidade);
     }
@@ -57,14 +59,14 @@ public class EspecialidadeServiceImpl implements EspecialidadeService {
         // Busca especialidade existente
         Especialidade especialidadeExistente = findByIdAndClinicId(id, clinicId);
 
-        // Valida se o novo nome já existe (se foi alterado)
-        if (!especialidadeExistente.getNome().equals(especialidadeAtualizada.getNome()) &&
-                especialidadeRepository.existsByNomeAndClinicaId(especialidadeAtualizada.getNome(), clinicId)) {
+        String nomeNormalizado = normalizarNome(especialidadeAtualizada.getNome());
+        if (!especialidadeExistente.getNome().equalsIgnoreCase(nomeNormalizado) &&
+                especialidadeRepository.existsByNomeIgnoreCaseAndClinicaId(nomeNormalizado, clinicId)) {
             throw new BusinessException(
-                    "Já existe uma especialidade com o nome'" + especialidadeAtualizada.getNome() + "' nesta clínica");
+                    "Já existe uma especialidade com o nome '" + nomeNormalizado + "' nesta clínica");
         }
 
-        especialidadeExistente.setNome(especialidadeAtualizada.getNome());
+        especialidadeExistente.setNome(nomeNormalizado);
         return especialidadeRepository.save(especialidadeExistente);
     }
 
@@ -73,6 +75,25 @@ public class EspecialidadeServiceImpl implements EspecialidadeService {
     public void delete(Long id, Long clinicId) {
         Especialidade especialidade = findByIdAndClinicId(id, clinicId);
         especialidadeRepository.delete(especialidade);
+    }
+
+    private String normalizarNome(String nome) {
+        if (nome == null || nome.isBlank()) {
+            return nome;
+        }
+
+        String[] palavras = nome.trim().toLowerCase().split("\\s+");
+        StringBuilder nomeNormalizado = new StringBuilder();
+
+        for (String palavra : palavras) {
+            if (!palavra.isEmpty()) {
+                nomeNormalizado.append(Character.toUpperCase(palavra.charAt(0)))
+                        .append(palavra.substring(1))
+                        .append(" ");
+            }
+        }
+
+        return nomeNormalizado.toString().trim();
     }
 
     @Override
