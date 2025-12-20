@@ -16,4 +16,6 @@ public interface GradeHorarioRepository extends JpaRepository<GradeHorario, Long
     List<GradeHorario> findAllByMedicoIdAndMedico_ClinicaId(Long medicoId, Long clinicId);
 
     Optional<GradeHorario> findByIdAndMedico_ClinicaId(Long id, Long clinicId);
+
+    List<GradeHorario> findAllByMedicoIdAndDiaSemana(Long medicoId, Integer diaSemana);
 }
