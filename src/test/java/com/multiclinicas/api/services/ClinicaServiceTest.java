@@ -93,7 +93,7 @@ class ClinicaServiceTest {
         when(clinicaRepository.save(any(Clinica.class))).thenReturn(clinica);
 
         // When
-        Clinica result = clinicaService.create(clinica);
+        Clinica result = clinicaService.create(clinica, "Admin", "admin@teste.local", "123456");
 
         // Then
         assertThat(result).isNotNull();
@@ -111,7 +111,7 @@ class ClinicaServiceTest {
         when(clinicaRepository.existsBySubdominio("clinica-existente")).thenReturn(true);
 
         // When & Then
-        assertThatThrownBy(() -> clinicaService.create(clinica))
+        assertThatThrownBy(() -> clinicaService.create(clinica, "Admin", "admin@teste.local", "123456"))
                 .isInstanceOf(ResourceConflictException.class)
                 .hasMessageContaining("Subdomínio já está em uso");
 

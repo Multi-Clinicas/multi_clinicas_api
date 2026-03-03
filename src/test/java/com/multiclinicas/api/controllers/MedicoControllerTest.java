@@ -71,7 +71,7 @@ class MedicoControllerTest {
                 medico.setNome("Dr. House");
                 medico.setCrm("12345/PE");
 
-                medicoDTO = new MedicoDTO(1L, "Dr. House", "12345/PE", clinicId, "X-Clinic-Id", "87999999999", null, 30,
+                medicoDTO = new MedicoDTO(1L, "Dr. House", "123.456.789-00", "12345/PE", clinicId, "X-Clinic-Id", "87999999999", "Rua B", 30,
                                 Collections.emptySet(), true);
                 medicoCreateDTO = new MedicoCreateDTO("Dr. House", "209.163.430-14", "12345/PE", "87999999999", 30,
                                 Set.of(10L), null, true);
@@ -120,8 +120,8 @@ class MedicoControllerTest {
                 medicoAtualizado.setId(medicoId);
                 medicoAtualizado.setNome("Doutor House");
 
-                MedicoDTO dtoAtualizado = new MedicoDTO(medicoId, "Doutor House", null, null, null, null, null, null,
-                                null, true);
+                MedicoDTO dtoAtualizado = new MedicoDTO(medicoId, "Doutor House", null, null, null, null, null, null, null,
+                                Collections.emptySet(), true);
 
                 when(medicoMapper.toEntity(any(MedicoCreateDTO.class))).thenReturn(medico);
                 when(medicoService.update(eq(medicoId), eq(clinicId), any(Medico.class), any()))
