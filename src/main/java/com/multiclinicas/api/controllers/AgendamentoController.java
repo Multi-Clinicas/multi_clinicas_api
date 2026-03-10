@@ -105,4 +105,14 @@ public class AgendamentoController {
         Agendamento agendamento = agendamentoService.atualizarStatus(id, clinicId, dto);
         return ResponseEntity.ok(agendamentoMapper.toDTO(agendamento));
     }
+
+    @Operation(summary = "Atualizar token de autorização", description = "Registra o token do convênio para faturamento")
+    @PatchMapping("/{id}/token")
+    public ResponseEntity<AgendamentoDTO> atualizarToken(
+            @PathVariable Long id,
+            @RequestBody @Valid com.multiclinicas.api.dtos.AgendamentoTokenDTO dto) {
+        Long clinicId = TenantContext.getClinicId();
+        Agendamento agendamento = agendamentoService.atualizarToken(id, clinicId, dto.tokenAutorizacao());
+        return ResponseEntity.ok(agendamentoMapper.toDTO(agendamento));
+    }
 }

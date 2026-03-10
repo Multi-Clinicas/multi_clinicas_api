@@ -98,7 +98,8 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         pacienteRepository.findByIdAndClinicaId(pacienteId, clinicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado para esta clínica"));
 
-        return agendamentoRepository.findByPacienteIdAndClinicaIdOrderByDataConsultaDescHoraInicioDesc(pacienteId, clinicId)
+        return agendamentoRepository
+                .findByPacienteIdAndClinicaIdOrderByDataConsultaDescHoraInicioDesc(pacienteId, clinicId)
                 .stream()
                 .map(agendamentoMapper::toDTO)
                 .toList();
@@ -152,26 +153,25 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         agendamento.setObservacoes(dto.observacoes());
 
         Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
-        
+
         if (paciente.getEmail() != null && !paciente.getEmail().trim().isEmpty()) {
-        	String dataFormatada = dto.dataConsulta().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        	String assunto = "Confirmação de Agendamento - " + clinica.getNomeFantasia();
-        	
-        	String mensagem = String.format(
-        			"Olá, %s, seu agendamento foi confirmado com sucesso!\n\n" + 
-        			"Detalhes da consulta:\n" + 
-        			"Médico(a): Dr(a). %s\n" + 
-        			"Data: %s\n" + 
-        			"Horário: %s\n" + 
-        			"Clínica: %s\n\n" + 
-        			"Agradecemos a preferência!",
-        			paciente.getNome(),
-        			medico.getNome(),
-        			dataFormatada,
-        			horaInicio.toString(),
-        			clinica.getNomeFantasia()
-				);
-        	emailService.enviarEmail(paciente.getEmail(), assunto, mensagem);
+            String dataFormatada = dto.dataConsulta().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String assunto = "Confirmação de Agendamento - " + clinica.getNomeFantasia();
+
+            String mensagem = String.format(
+                    "Olá, %s, seu agendamento foi confirmado com sucesso!\n\n" +
+                            "Detalhes da consulta:\n" +
+                            "Médico(a): Dr(a). %s\n" +
+                            "Data: %s\n" +
+                            "Horário: %s\n" +
+                            "Clínica: %s\n\n" +
+                            "Agradecemos a preferência!",
+                    paciente.getNome(),
+                    medico.getNome(),
+                    dataFormatada,
+                    horaInicio.toString(),
+                    clinica.getNomeFantasia());
+            emailService.enviarEmail(paciente.getEmail(), assunto, mensagem);
         }
         return agendamentoSalvo;
     }
@@ -249,25 +249,27 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     @Override
+    @Override
     @Transactional(readOnly = true)
-    public DisponibilidadeDTO buscarDisponibilidade(Long medicoId, LocalDate data, Long clinicId){
+    public DisponibilidadeDTO buscarDisponibilidade(Long medicoId, LocalDate data, Long clinicId) {
         Medico medico = medicoRepository.findByIdAndClinicaId(medicoId, clinicId);
-        if(medico == null){
-            throw  new ResourceNotFoundException("Médido não encontrado.");
+        if (medico == null) {
+            throw new ResourceNotFoundException("Médido não encontrado.");
         }
 
-        if(!medico.getAtivo()){
+        if (!medico.getAtivo()) {
             return new DisponibilidadeDTO(medicoId, data, List.of());
         }
 
         int diaSemana = data.getDayOfWeek().getValue();
         List<GradeHorario> grades = gradeHorarioRepository.findAllByMedicoIdAndDiaSemana(medico.getId(), diaSemana);
 
-        if(grades.isEmpty()){
+        if (grades.isEmpty()) {
             return new DisponibilidadeDTO(medicoId, data, List.of());
         }
 
-        List<Agendamento> agendamentos = agendamentoRepository.findByMedicoIdAndDataConsultaAndClinicaId(medico.getId(), data, clinicId)
+        List<Agendamento> agendamentos = agendamentoRepository
+                .findByMedicoIdAndDataConsultaAndClinicaId(medico.getId(), data, clinicId)
                 .stream()
                 .filter(a -> a.getStatus() != StatusAgendamento.CANCELADO_CLINICA &&
                         a.getStatus() != StatusAgendamento.CANCELADO_PACIENTE)
@@ -275,7 +277,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
         int duracaoConsulta = medico.getDuracaoConsulta();
         List<LocalTime> horariosDisponiveis = new ArrayList<>();
 
-        for(GradeHorario grade : grades){
+        for (GradeHorario grade : grades) {
             LocalTime slotInicio = grade.getHoraInicio();
             LocalTime slotFim = slotInicio.plusMinutes(duracaoConsulta);
 
@@ -285,7 +287,7 @@ public class AgendamentoServiceImpl implements AgendamentoService {
                 LocalDate hoje = LocalDate.now();
                 Boolean noPassado = data.isBefore(hoje) || (data.isEqual(hoje) && slotInicio.isBefore(LocalTime.now()));
 
-                if(!conflito && !noPassado){
+                if (!conflito && !noPassado) {
                     horariosDisponiveis.add(slotInicio);
                 }
 
@@ -299,12 +301,22 @@ public class AgendamentoServiceImpl implements AgendamentoService {
     }
 
     private boolean isSlotOcupado(LocalTime inicio, LocalTime fim, List<Agendamento> agendamentos) {
-        return agendamentos.stream().anyMatch(a ->
-                (inicio.isBefore(a.getHoraFim()) && fim.isAfter(a.getHoraInicio()))
-        );
+        return agendamentos.stream().anyMatch(a -> (inicio.isBefore(a.getHoraFim()) && fim.isAfter(a.getHoraInicio())));
     }
 
+    @Override
+    @Transactional
+    public Agendamento atualizarToken(Long id, Long clinicId, String token) {
+        Agendamento agendamento = findByIdAndClinicId(id, clinicId);
 
+        // Regra simples: só permite adicionar token em agendamentos de convênio
+        if (agendamento.getTipoPagamento() != TipoPagamento.CONVENIO) {
+            throw new BusinessException("Apenas agendamentos via convênio exigem token de autorização.");
+        }
+
+        agendamento.setTokenAutorizacao(token);
+        return agendamentoRepository.save(agendamento);
+    }
     private void validarHorarioFuturo(LocalDate data, LocalTime hora) {
         LocalDate hoje = LocalDate.now();
         if (data.isEqual(hoje) && hora.isBefore(LocalTime.now())) {
