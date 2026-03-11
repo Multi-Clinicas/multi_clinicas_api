@@ -20,6 +20,7 @@ import com.multiclinicas.api.dtos.AgendamentoCreateDTO;
 import com.multiclinicas.api.dtos.AgendamentoDTO;
 import com.multiclinicas.api.dtos.AgendamentoRemarcarDTO;
 import com.multiclinicas.api.dtos.AgendamentoStatusDTO;
+import com.multiclinicas.api.dtos.AgendamentoTokenDTO;
 import com.multiclinicas.api.dtos.DisponibilidadeDTO;
 import com.multiclinicas.api.mappers.AgendamentoMapper;
 import com.multiclinicas.api.models.Agendamento;
@@ -104,5 +105,15 @@ public class AgendamentoController {
         Long clinicId = TenantContext.getClinicId();
         Agendamento agendamento = agendamentoService.atualizarStatus(id, clinicId, dto);
         return ResponseEntity.ok(agendamentoMapper.toDTO(agendamento));
+    }
+    
+    @Operation(summary = "Atualizar token do convênio", description = "Insere o token de autorização caso o paciente use convênio")
+    @PatchMapping("/{id}/token")
+    public ResponseEntity<AgendamentoDTO> atualizarToken(
+    		@PathVariable Long id,
+    		@RequestBody @Valid AgendamentoTokenDTO dto) {
+    	Long clinicId = TenantContext.getClinicId();
+    	Agendamento agendamento = agendamentoService.atualizarToken(id, clinicId, dto);
+    	return ResponseEntity.ok(agendamentoMapper.toDTO(agendamento));
     }
 }

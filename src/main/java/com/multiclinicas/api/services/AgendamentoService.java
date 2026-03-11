@@ -7,6 +7,7 @@ import com.multiclinicas.api.dtos.AgendamentoDTO;
 import com.multiclinicas.api.dtos.AgendamentoCreateDTO;
 import com.multiclinicas.api.dtos.AgendamentoRemarcarDTO;
 import com.multiclinicas.api.dtos.AgendamentoStatusDTO;
+import com.multiclinicas.api.dtos.AgendamentoTokenDTO;
 import com.multiclinicas.api.dtos.DisponibilidadeDTO;
 import com.multiclinicas.api.models.Agendamento;
 
@@ -24,6 +25,8 @@ public interface AgendamentoService {
     Agendamento cancelar(Long id, Long clinicId, boolean canceladoPeloClinica);
 
     Agendamento atualizarStatus(Long id, Long clinicId, AgendamentoStatusDTO dto);
+    
+    Agendamento atualizarToken(Long id, Long clinicId, AgendamentoTokenDTO dto);
 
     DisponibilidadeDTO buscarDisponibilidade(Long medicoId, LocalDate data, Long clinicId);
 }
